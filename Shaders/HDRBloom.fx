@@ -199,6 +199,26 @@ uniform int UI_BLOOM_BLENDING_TYPE
 	ui_items = "Additive\0Overlay\0";
 > = Overlay;
 
+uniform float UI_BLOOM_CONTRAST
+<
+	ui_category = "Bloom - Contrast";
+	ui_label = "Contrast";
+	ui_category_closed = true;
+	ui_type = "slider";
+	ui_min = 0.0;
+	ui_max = 3.0;
+> = 1.55;
+
+uniform float UI_BLOOM_CONTRAST_MID
+<
+	ui_category = "Bloom - Contrast";
+	ui_label = "Contrast Mid Gray";
+	ui_category_closed = true;
+	ui_type = "slider";
+	ui_min = 0.0;
+	ui_max = 1.0;
+> = 0.5;
+
 uniform bool UI_BLOOM_SHOW_DEBUG
 <
 	ui_category = "Debug";
@@ -391,6 +411,10 @@ sampler SamplerNoiseTexture
 		AddressV = Clamp;
 };
 
+float RenoDX_Contrast(float x, float contrast, float mid_gray = 0.18f) {
+  return pow(max(0, x / mid_gray), contrast) * mid_gray;
+}
+
 #define DECLARE_BLOOM_TEXTURE(TexName, Downscale) \
 	texture TexName##Mip <pooled = true;> \
 	{ \
@@ -557,6 +581,13 @@ float4 CombineBloomPS(float4 pixel : SV_POSITION, float2 texcoord : TEXCOORD0) :
 		tex2D(Bloom7, texcoord);
 	MergedBloom /= 8;
 #endif
+
+	//Colorgrade
+	float y = Luminance(MergedBloom.rgb, lumCoeffHDR);
+	if (y > 0) {
+		float y1 = RenoDX_Contrast(y, UI_BLOOM_CONTRAST, UI_BLOOM_CONTRAST_MID);
+		MergedBloom.rgb *= y1 / y;
+	}
 
 	return MergedBloom;
 }
